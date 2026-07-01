@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Books H5</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{width:100%;height:100%;overflow:hidden;background:#f7f6f3;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Helvetica Neue",Arial,sans-serif;color:#111}
+.app{width:100vw;height:100dvh;position:relative;overflow:hidden;background:linear-gradient(180deg,#fbfaf7 0%,#f3f2ee 100%)}
+.page{position:absolute;inset:0;width:100%;height:100%;transition:transform .34s cubic-bezier(.22,1,.36,1),opacity .28s ease;background:#f7f6f3;overflow:hidden}
+.library{padding:5.5vh 5vw 3vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.small-title{text-align:center;font-size:12px;font-weight:700;letter-spacing:.02em;margin-bottom:2px}
+.logo{text-align:center;font-family:Georgia,"Times New Roman",serif;font-size:clamp(48px,17vw,78px);line-height:.88;font-weight:500;letter-spacing:-.07em;margin-bottom:4vh}
+.section{margin-bottom:4.2vh;position:relative}
+.section-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.15vh;padding:0 .5vw;position:relative;z-index:5}
+.section-head h3{font-size:15px;font-weight:800;letter-spacing:-.02em}
+.section-head span{font-size:12px;color:#aaa;font-weight:600;cursor:pointer;user-select:none}
+.shelf-wrap{position:relative;height:clamp(136px,29vw,180px);padding:0;overflow:hidden;border-radius:18px}.shelf-wrap:before,.shelf-wrap:after{content:'';position:absolute;top:0;bottom:36px;width:28px;z-index:6;pointer-events:none}.shelf-wrap:before{left:0;background:linear-gradient(90deg,#f7f6f3,rgba(247,246,243,0))}.shelf-wrap:after{right:0;background:linear-gradient(270deg,#f7f6f3,rgba(247,246,243,0))}
+.books-row{height:100%;display:flex;align-items:flex-end;gap:clamp(7px,1.9vw,12px);position:relative;z-index:3;overflow-x:auto;overflow-y:hidden;padding:0 5vw 22px;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;touch-action:pan-x}.books-row::-webkit-scrollbar{display:none}.books-row:before,.books-row:after{content:'';display:block;flex:0 0 1px}
+.book{position:relative;scroll-snap-align:start;flex:0 0 clamp(58px,17vw,88px);height:var(--h);border-radius:2px 5px 5px 2px;transform:perspective(600px) rotateY(-7deg);transform-origin:left center;box-shadow:9px 10px 16px rgba(0,0,0,.18),1px 1px 0 rgba(255,255,255,.6) inset;cursor:pointer;transition:transform .2s ease,filter .2s ease;overflow:visible;background:#ddd}
+.book:active{transform:perspective(600px) rotateY(-7deg) translateY(-9px) scale(1.045) rotateZ(-2deg)}
+.book img{width:100%;height:100%;object-fit:cover;border-radius:2px 5px 5px 2px;display:block;position:relative;z-index:2}
+.book:before{content:"";position:absolute;left:-7px;top:3px;width:8px;height:calc(100% - 3px);border-radius:2px 0 0 2px;background:linear-gradient(90deg,rgba(0,0,0,.45),rgba(255,255,255,.08));z-index:1;filter:brightness(.8)}
+.book:after{content:"";position:absolute;inset:0;border-radius:2px 5px 5px 2px;background:linear-gradient(90deg,rgba(255,255,255,.28),rgba(255,255,255,0) 34%,rgba(0,0,0,.08) 100%);z-index:3;pointer-events:none}
+.book .top{position:absolute;left:-3px;right:1px;top:-5px;height:7px;background:linear-gradient(180deg,rgba(255,255,255,.72),rgba(0,0,0,.12));transform:skewX(-32deg);border-radius:3px 4px 0 0;z-index:0}
+.shelf{position:absolute;left:0;right:0;bottom:0;height:44px;border-radius:13px;background:linear-gradient(180deg,#61baff 0%,#3191ed 100%);box-shadow:0 14px 24px rgba(33,120,211,.25),inset 0 1px 0 rgba(255,255,255,.55);z-index:2}
+.shelf:before{content:"";position:absolute;left:14px;right:14px;top:8px;height:7px;border-radius:99px;background:rgba(255,255,255,.22)}
+.shelf:after{content:"";position:absolute;left:10px;right:10px;bottom:5px;height:10px;border-radius:99px;background:rgba(0,0,0,.08)}
+.add-btn{position:sticky;left:50%;bottom:22px;transform:translateX(-50%);display:block;margin:3vh auto 0;border:0;background:#050505;color:#fff;border-radius:999px;height:56px;width:150px;font-size:14px;font-weight:800;box-shadow:0 14px 30px rgba(0,0,0,.22)}
+.collection{transform:translateX(100%);padding:5.2vh 5vw 5vh;overflow-y:auto;-webkit-overflow-scrolling:touch;background:#f8f7f4}
+.collection-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px}
+.collection-title{font-size:34px;font-weight:900;letter-spacing:-.06em}
+.collection-sub{font-size:13px;color:#8e8e93;font-weight:700;margin-top:4px}
+.close-collection{border:0;background:rgba(0,0,0,.08);width:42px;height:42px;border-radius:999px;font-size:26px;line-height:1}
+.collection-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:26px 16px;padding-bottom:40px}
+.grid-item{min-width:0}.grid-book{height:clamp(142px,42vw,190px);border-radius:4px 8px 8px 4px;position:relative;transform:perspective(700px) rotateY(-5deg);box-shadow:10px 13px 20px rgba(0,0,0,.18);background:#ddd;cursor:pointer}.grid-book img{width:100%;height:100%;object-fit:cover;border-radius:4px 8px 8px 4px;display:block}.grid-book:before{content:"";position:absolute;left:-7px;top:4px;width:8px;height:calc(100% - 4px);border-radius:3px 0 0 3px;background:linear-gradient(90deg,rgba(0,0,0,.42),rgba(255,255,255,.08))}.grid-book:after{content:"";position:absolute;inset:0;border-radius:4px 8px 8px 4px;background:linear-gradient(90deg,rgba(255,255,255,.23),transparent 34%,rgba(0,0,0,.07))}.grid-name{font-size:13px;font-weight:800;line-height:1.18;margin-top:10px;letter-spacing:-.02em}.grid-author{font-size:11px;color:#9a9a9a;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.app.collection-open .library{transform:translateX(-18%);opacity:.15;pointer-events:none}.app.collection-open .collection{transform:translateX(0)}
+.app.collection-open .back{display:block}
+.reader{transform:translateX(100%);padding:6vh 7vw 96px;overflow-y:auto;-webkit-overflow-scrolling:touch;background:#f8f7f4}
+.app.reading .library{transform:translateX(-18%);opacity:.15;pointer-events:none}
+.app.reading .reader{transform:translateX(0)}
+.chapter{text-align:center;font-size:13px;margin-bottom:10px;color:#333}
+.reader h1{text-align:center;font-size:22px;line-height:1.12;letter-spacing:-.04em;margin-bottom:4.5vh;font-weight:900}
+.article{font-family:Georgia,"Times New Roman",serif;font-size:18px;line-height:1.9;text-align:justify;color:#151515;letter-spacing:-.01em}
+.article p{margin-bottom:18px}
+.article p:first-of-type:first-letter{float:left;font-size:58px;line-height:.86;padding:8px 7px 0 0}
+.bottom-bar{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);height:54px;display:flex;align-items:center;gap:8px;padding:7px;background:rgba(5,5,5,.94);border-radius:999px;box-shadow:0 16px 30px rgba(0,0,0,.25);z-index:20;backdrop-filter:blur(12px)}
+.pill,.icon{border:0;height:40px;border-radius:999px;font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center}
+.pill{padding:0 18px;background:#fff;color:#111}.time-pill{padding:0 14px;background:#0b0b0b;color:#fff;border:1px solid rgba(255,255,255,.18)}.icon{width:40px;background:#0b0b0b;color:#fff;border:1px solid rgba(255,255,255,.18);font-size:16px}
+.back{position:fixed;left:18px;top:18px;width:44px;height:44px;border:0;border-radius:50%;background:rgba(0,0,0,.08);font-size:22px;z-index:30;display:none}.app.reading .back{display:block}
+@media (min-width:720px){.library{padding-left:18vw;padding-right:18vw}.reader{padding-left:24vw;padding-right:24vw}.book{flex-basis:86px}.shelf-wrap{height:172px}}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <button class="back" onclick="goBack()">‹</button>
+  <main class="page library">
+    <div class="small-title">My Favourite</div>
+    <div class="logo">BOOKS</div>
+
+    <section class="section">
+      <div class="section-head"><h3>Design</h3><span onclick="openCollection('Design',16)">16 books  ‹  ›</span></div>
+      <div class="shelf-wrap"><div class="books-row">
+        <div class="book" style="--h:118px" onclick="openReader()"><span class="top"></span><img src="https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=300&h=430&fit=crop" /></div>
+        <div class="book" style="--h:126px" onclick="openReader()"><span class="top"></span><img src="https://images.unsplash.com/photo-1512820790803-83ca734da794?w=300&h=430&fit=crop" /></div>
+        <div class="book" style="--h:112px" onclick="openReader()"><span class="top"></span><img src="https://images.unsplash.com/photo-1495446815901-a7297e633e8d?w=300&h=430&fit=crop" /></div>
+        <div class="book" style="--h:121px" onclick="openReader()"><span class="top"></span><img src="https://images.unsplash.com/photo-1532012197267-da84d127e765?w=300&h=430&fit=crop" /></div>
+        <div class="book" style="--h:116px" onclick="openReader()"><span class="top"></span><img src="https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?w=300&h=430&fit=crop" /></div>
+        <div class="book" style="--h:124px" onclick="openReader()"><span class="top"></span><img src="https://images.unsplash.com/photo-1511108690759-009324a90311?w=300&h=430&fit=crop" /></div>
+        <div class="book" style="--h:113px" onclick="openReader()"><span class="top"></span><img src="https://images.unsplash.com/photo-1526243741027-444d633d7365?w=300&h=430&fit=crop" /></div>
+        <div class="book" style="--h:129px" onclick="openReader()"><span class="top"></span><img src="https://images.unsplash.com/photo-1513001900722-370f803f498d?w=300&h=430&fit=crop" /></div>
+        <div class="book" style="--h:118px" onclick="openReader()"><span class="top"></span><img src="https://images.unsplash.com/photo-1455885666463-9b05c73123f8?w=300&h=430&fit=crop" /></div>
+      </div><div class="shelf"></div></div>
+    </section>
+
+    <section class="section">
+      <div class="section-head"><h3>Psychology</h3><span onclick="openCollection('Psychology',3)">3 books  ‹  ›</span></div>
+      <div class="shelf-wrap"><div class="books-row">
+        <div class="book" style="--h:122px" onclick="openReader()"><span class="top"></span><img src="https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=300&h=430&fit=crop" /></div>
+        <div class="book" style="--h:114px" onclick="openReader()"><span class="top"></span><img src="https://images.unsplash.com/photo-1516979187457-637abb4f9353?w=300&h=430&fit=crop" /></div>
+        <div class="book" style="--h:128px" onclick="openReader()"><span class="top"></span><img src="https://images.unsplash.com/photo-1497633762265-9d179a990aa6?w=300&h=430&fit=crop" /></div>
+        <div class="book" style="--h:119px" onclick="openReader()"><span class="top"></span><img src="https://images.unsplash.com/photo-1476275466078-4007374efbbe?w=300&h=430&fit=crop" /></div>
+        <div class="book" style="--h:124px" onclick="openReader()"><span class="top"></span><img src="https://images.unsplash.com/photo-1511108690759-009324a90311?w=300&h=430&fit=crop" /></div>
+        <div class="book" style="--h:116px" onclick="openReader()"><span class="top"></span><img src="https://images.unsplash.com/photo-1526243741027-444d633d7365?w=300&h=430&fit=crop" /></div>
+        <div class="book" style="--h:127px" onclick="openReader()"><span class="top"></span><img src="https://images.unsplash.com/photo-1513001900722-370f803f498d?w=300&h=430&fit=crop" /></div>
+      </div><div class="shelf"></div></div>
+    </section>
+
+    <section class="section">
+      <div class="section-head"><h3>Novels</h3><span onclick="openCollection('Novels',8)">8 books  ‹  ›</span></div>
+      <div class="shelf-wrap"><div class="books-row">
+        <div class="book" style="--h:118px" onclick="openReader()"><span class="top"></span><img src="https://images.unsplash.com/photo-1519682337058-a94d519337bc?w=300&h=430&fit=crop" /></div>
+        <div class="book" style="--h:126px" onclick="openReader()"><span class="top"></span><img src="https://images.unsplash.com/photo-1495640388908-05fa85288e61?w=300&h=430&fit=crop" /></div>
+        <div class="book" style="--h:115px" onclick="openReader()"><span class="top"></span><img src="https://images.unsplash.com/photo-1507842217343-583bb7270b66?w=300&h=430&fit=crop" /></div>
+        <div class="book" style="--h:121px" onclick="openReader()"><span class="top"></span><img src="https://images.unsplash.com/photo-1463320726281-696a485928c7?w=300&h=430&fit=crop" /></div>
+        <div class="book" style="--h:125px" onclick="openReader()"><span class="top"></span><img src="https://images.unsplash.com/photo-1511108690759-009324a90311?w=300&h=430&fit=crop" /></div>
+        <div class="book" style="--h:117px" onclick="openReader()"><span class="top"></span><img src="https://images.unsplash.com/photo-1526243741027-444d633d7365?w=300&h=430&fit=crop" /></div>
+        <div class="book" style="--h:129px" onclick="openReader()"><span class="top"></span><img src="https://images.unsplash.com/photo-1513001900722-370f803f498d?w=300&h=430&fit=crop" /></div>
+        <div class="book" style="--h:114px" onclick="openReader()"><span class="top"></span><img src="https://images.unsplash.com/photo-1455885666463-9b05c73123f8?w=300&h=430&fit=crop" /></div>
+      </div><div class="shelf"></div></div>
+    </section>
+
+    <button class="add-btn">Add Books</button>
+  </main>
+
+  <section class="page collection" id="collectionPage">
+    <div class="collection-head">
+      <div>
+        <div class="collection-title" id="collectionTitle">Design</div>
+        <div class="collection-sub" id="collectionSub">16 books</div>
+      </div>
+      <button class="close-collection" onclick="closeCollection()">×</button>
+    </div>
+    <div class="collection-grid" id="collectionGrid"></div>
+  </section>
+
+
+  <article class="page reader">
+    <div class="chapter">Chapter 1</div>
+    <h1>The Psychopathology<br>of Everyday Things</h1>
+    <div class="article">
+      <p>Signifiers are the most important addition to the chapter, a concept first introduced in my book Living with Complexity. The first edition had a focus upon affordances, but although affordances Preface to the Revised Edition make sense for interaction with physical objects, they are confusing when dealing with virtual ones.</p>
+      <p>As a result, affordances have created much confusion in the world of design. Affordances define what actions are possible. Signifiers specify how people discover those possibilities: signifiers are signs, perceptible signals of what can be done.</p>
+      <p>Signifiers are of far more importance to designers than are affordances. Hence, the extended treatment. I added a very brief section on HCD, a term that didn't yet exist when the first edition was published, although looking back we see that the entire book was about HCD.</p>
+      <p>Other than that, the chapter is the same, and although all the photographs and drawings are new, the ideas remain simple: make things visible, make feedback clear, and design for the way people actually think.</p>
+    </div>
+    <div class="bottom-bar">
+      <div class="time-pill pill">◷ 12:07</div><button class="pill">Read</button><button class="icon">☾</button><button class="icon">T</button>
+    </div>
+  </article>
+</div>
+<script>
+const covers=[
+  'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=300&h=430&fit=crop',
+  'https://images.unsplash.com/photo-1512820790803-83ca734da794?w=300&h=430&fit=crop',
+  'https://images.unsplash.com/photo-1495446815901-a7297e633e8d?w=300&h=430&fit=crop',
+  'https://images.unsplash.com/photo-1532012197267-da84d127e765?w=300&h=430&fit=crop',
+  'https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?w=300&h=430&fit=crop',
+  'https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=300&h=430&fit=crop',
+  'https://images.unsplash.com/photo-1516979187457-637abb4f9353?w=300&h=430&fit=crop',
+  'https://images.unsplash.com/photo-1497633762265-9d179a990aa6?w=300&h=430&fit=crop',
+  'https://images.unsplash.com/photo-1476275466078-4007374efbbe?w=300&h=430&fit=crop',
+  'https://images.unsplash.com/photo-1519682337058-a94d519337bc?w=300&h=430&fit=crop',
+  'https://images.unsplash.com/photo-1495640388908-05fa85288e61?w=300&h=430&fit=crop',
+  'https://images.unsplash.com/photo-1507842217343-583bb7270b66?w=300&h=430&fit=crop',
+  'https://images.unsplash.com/photo-1463320726281-696a485928c7?w=300&h=430&fit=crop',
+  'https://images.unsplash.com/photo-1511108690759-009324a90311?w=300&h=430&fit=crop',
+  'https://images.unsplash.com/photo-1526243741027-444d633d7365?w=300&h=430&fit=crop',
+  'https://images.unsplash.com/photo-1513001900722-370f803f498d?w=300&h=430&fit=crop'
+];
+const names=['Design of Everyday Things','Creative Mind','Visual System','Modern Layout','Good Interface','Human Behavior','Thinking Fast','Invisible Form','Simple Rules','Deep Work','Tiny Stories','Quiet Book','Blue Library','Paper World','Daily Design','Clean Code'];
+function openReader(){
+  const app=document.getElementById('app');
+  app.classList.remove('collection-open');
+  app.classList.add('reading');
+}
+function openCollection(title,count){
+  document.getElementById('collectionTitle').textContent=title;
+  document.getElementById('collectionSub').textContent=count+' books';
+  const grid=document.getElementById('collectionGrid');
+  grid.innerHTML='';
+  for(let i=0;i<count;i++){
+    const item=document.createElement('div');
+    item.className='grid-item';
+    item.innerHTML=`<div class="grid-book" onclick="openReader()"><img src="${covers[i%covers.length]}" /></div><div class="grid-name">${names[i%names.length]}</div><div class="grid-author">Apple Books Style</div>`;
+    grid.appendChild(item);
+  }
+  document.getElementById('app').classList.remove('reading');
+  document.getElementById('app').classList.add('collection-open');
+}
+function closeCollection(){document.getElementById('app').classList.remove('collection-open')}
+function goBack(){
+  const app=document.getElementById('app');
+  if(app.classList.contains('reading')) app.classList.remove('reading');
+  else app.classList.remove('collection-open');
+}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')goBack()})
+</script>
+</body>
+</html>
