@@ -18,30 +18,29 @@ import '../app.dart';
 import 'app_config.dart';
 import 'app_config_provider.dart';
 
-Future<void> bootstrap({
-  required AppConfig config,
-}) async {
-  WidgetsFlutterBinding.ensureInitialized();
-
-  // 启动前先恢复本地设置。
-  final preferencesService = await PreferencesService.create();
-  final appDatabase = AppDatabase();
-  await appDatabase.ensureCompatibleSchema();
-  await appDatabase.seedDemoLibraryIfNeeded();
-  await importBundledSampleIfExists(appDatabase);
+Future<void> bootstrap({required AppConfig config}) async {
   final logger = AppLogger();
-
-  FlutterError.onError = (details) {
-    logger.logFlutterError(details);
-  };
-
-  PlatformDispatcher.instance.onError = (error, stack) {
-    logger.error('捕获到未处理的平台异常', error, stack);
-    return true;
-  };
 
   await runZonedGuarded(
     () async {
+      WidgetsFlutterBinding.ensureInitialized();
+
+      // 启动前先恢复本地设置。
+      final preferencesService = await PreferencesService.create();
+      final appDatabase = AppDatabase();
+      await appDatabase.ensureCompatibleSchema();
+      await appDatabase.seedDemoLibraryIfNeeded();
+      await importBundledSampleIfExists(appDatabase);
+
+      FlutterError.onError = (details) {
+        logger.logFlutterError(details);
+      };
+
+      PlatformDispatcher.instance.onError = (error, stack) {
+        logger.error('捕获到未处理的平台异常', error, stack);
+        return true;
+      };
+
       runApp(
         ProviderScope(
           overrides: [

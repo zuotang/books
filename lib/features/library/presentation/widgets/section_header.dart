@@ -17,18 +17,28 @@ class SectionHeader extends StatelessWidget {
     final theme = Theme.of(context);
 
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: <Widget>[
-        Text(
-          title,
-          style: theme.textTheme.titleLarge,
+        Expanded(
+          child: Text(
+            title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.titleLarge,
+          ),
         ),
         if (trailingText != null)
-          TextButton(
-            onPressed: onTap,
-            child: Text(
-              trailingText!,
-              style: theme.textTheme.bodySmall,
+          Flexible(
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: onTap,
+                child: Text(
+                  trailingText!,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodySmall,
+                ),
+              ),
             ),
           ),
       ],

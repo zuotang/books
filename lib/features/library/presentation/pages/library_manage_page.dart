@@ -38,14 +38,16 @@ class _LibraryManagePageState extends ConsumerState<LibraryManagePage> {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
           children: <Widget>[
-            Row(
-              children: <Widget>[
-                FilledButton.tonalIcon(
-                  onPressed: context.pop,
-                  icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
-                  label: Text(l10n.backToLibrary),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: FilledButton.tonalIcon(
+                onPressed: context.pop,
+                icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
+                label: Text(
+                  l10n.backToLibrary,
+                  overflow: TextOverflow.ellipsis,
                 ),
-              ],
+              ),
             ),
             const SizedBox(height: AppSpacing.lg),
             Text(
@@ -55,27 +57,39 @@ class _LibraryManagePageState extends ConsumerState<LibraryManagePage> {
             const SizedBox(height: AppSpacing.lg),
             _ManageCard(
               title: l10n.sortBooks,
-              child: SegmentedButton<LibrarySortMode>(
-                segments: <ButtonSegment<LibrarySortMode>>[
-                  ButtonSegment(
-                    value: LibrarySortMode.recentRead,
-                    label: Text(l10n.sortRecentRead),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: SegmentedButton<LibrarySortMode>(
+                    segments: <ButtonSegment<LibrarySortMode>>[
+                      ButtonSegment(
+                        value: LibrarySortMode.recentRead,
+                        label: Text(l10n.sortRecentRead),
+                      ),
+                      ButtonSegment(
+                        value: LibrarySortMode.title,
+                        label: Text(l10n.sortTitle),
+                      ),
+                      ButtonSegment(
+                        value: LibrarySortMode.author,
+                        label: Text(l10n.sortAuthor),
+                      ),
+                    ],
+                    selected: <LibrarySortMode>{sortMode},
+                    showSelectedIcon: false,
+                    style: const ButtonStyle(
+                      visualDensity: VisualDensity.compact,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    onSelectionChanged: (selection) {
+                      ref
+                          .read(librarySortModeProvider.notifier)
+                          .update(selection.first);
+                    },
                   ),
-                  ButtonSegment(
-                    value: LibrarySortMode.title,
-                    label: Text(l10n.sortTitle),
-                  ),
-                  ButtonSegment(
-                    value: LibrarySortMode.author,
-                    label: Text(l10n.sortAuthor),
-                  ),
-                ],
-                selected: <LibrarySortMode>{sortMode},
-                onSelectionChanged: (selection) {
-                  ref
-                      .read(librarySortModeProvider.notifier)
-                      .update(selection.first);
-                },
+                ),
               ),
             ),
             const SizedBox(height: AppSpacing.md),
@@ -119,7 +133,9 @@ class _LibraryManagePageState extends ConsumerState<LibraryManagePage> {
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
-                      Text('${l10n.totalBooksStarted}: ${overview.totalBooksStarted}'),
+                      Text(
+                        '${l10n.totalBooksStarted}: ${overview.totalBooksStarted}',
+                      ),
                       const SizedBox(height: 8),
                       Text(
                         '${l10n.totalReadingTime}: ${_formatDuration(overview.totalReadingSeconds)}',
@@ -197,15 +213,15 @@ class _LibraryManagePageState extends ConsumerState<LibraryManagePage> {
       ref.invalidate(libraryCategoriesProvider);
       if (mounted) {
         _pathsController.clear();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(l10n.importSuccess)),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(l10n.importSuccess)));
       }
     } catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${l10n.importFailed}: $error')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('${l10n.importFailed}: $error')));
       }
     } finally {
       if (mounted) {
@@ -221,7 +237,8 @@ class _LibraryManagePageState extends ConsumerState<LibraryManagePage> {
     final titleController = TextEditingController(text: book.title);
     final authorController = TextEditingController(text: book.author);
 
-    final shouldSave = await showDialog<bool>(
+    final shouldSave =
+        await showDialog<bool>(
           context: context,
           builder: (context) {
             return AlertDialog(
@@ -236,7 +253,9 @@ class _LibraryManagePageState extends ConsumerState<LibraryManagePage> {
                   const SizedBox(height: AppSpacing.md),
                   TextField(
                     controller: authorController,
-                    decoration: InputDecoration(labelText: l10n.bookAuthorLabel),
+                    decoration: InputDecoration(
+                      labelText: l10n.bookAuthorLabel,
+                    ),
                   ),
                 ],
               ),
@@ -266,7 +285,9 @@ class _LibraryManagePageState extends ConsumerState<LibraryManagePage> {
     titleController.dispose();
     authorController.dispose();
 
-    await ref.read(bookRepositoryProvider).updateBookMetadata(
+    await ref
+        .read(bookRepositoryProvider)
+        .updateBookMetadata(
           bookId: book.id,
           title: nextTitle,
           author: nextAuthor,
@@ -277,7 +298,8 @@ class _LibraryManagePageState extends ConsumerState<LibraryManagePage> {
 
   Future<void> _deleteBook(Book book) async {
     final l10n = AppLocalizations.of(context)!;
-    final confirmed = await showDialog<bool>(
+    final confirmed =
+        await showDialog<bool>(
           context: context,
           builder: (context) {
             return AlertDialog(
@@ -328,11 +350,7 @@ class _LibraryManagePageState extends ConsumerState<LibraryManagePage> {
 }
 
 class _ManageCard extends StatelessWidget {
-  const _ManageCard({
-    required this.title,
-    required this.child,
-    this.subtitle,
-  });
+  const _ManageCard({required this.title, required this.child, this.subtitle});
 
   final String title;
   final String? subtitle;
@@ -384,10 +402,7 @@ class _ManagedBookTile extends StatelessWidget {
       trailing: Wrap(
         spacing: 8,
         children: <Widget>[
-          IconButton(
-            onPressed: onEdit,
-            icon: const Icon(Icons.edit_outlined),
-          ),
+          IconButton(onPressed: onEdit, icon: const Icon(Icons.edit_outlined)),
           IconButton(
             onPressed: onDelete,
             icon: const Icon(Icons.delete_outline_rounded),

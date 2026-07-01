@@ -14,11 +14,7 @@ import '../../data/book_repository.dart';
 import '../../domain/book_models.dart';
 
 class ReaderPage extends ConsumerWidget {
-  const ReaderPage({
-    super.key,
-    required this.bookId,
-    this.chapterId,
-  });
+  const ReaderPage({super.key, required this.bookId, this.chapterId});
 
   final String bookId;
   final String? chapterId;
@@ -49,17 +45,10 @@ class ReaderPage extends ConsumerWidget {
                 return Center(child: Text(l10n.bookNotFound));
               }
 
-              return _ReaderSession(
-                payload: payload,
-                readerTheme: readerTheme,
-              );
+              return _ReaderSession(payload: payload, readerTheme: readerTheme);
             },
-            loading: () => const Center(
-              child: CircularProgressIndicator(),
-            ),
-            error: (error, stack) => Center(
-              child: Text(error.toString()),
-            ),
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (error, stack) => Center(child: Text(error.toString())),
           ),
         ),
       ),
@@ -68,10 +57,7 @@ class ReaderPage extends ConsumerWidget {
 }
 
 class _ReaderSession extends ConsumerStatefulWidget {
-  const _ReaderSession({
-    required this.payload,
-    required this.readerTheme,
-  });
+  const _ReaderSession({required this.payload, required this.readerTheme});
 
   final BookReaderPayload payload;
   final ReaderSurfaceTheme readerTheme;
@@ -112,7 +98,8 @@ class _ReaderSessionState extends ConsumerState<_ReaderSession>
   void didUpdateWidget(covariant _ReaderSession oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.payload.book.id != widget.payload.book.id ||
-        oldWidget.payload.currentChapter.id != widget.payload.currentChapter.id ||
+        oldWidget.payload.currentChapter.id !=
+            widget.payload.currentChapter.id ||
         oldWidget.payload.initialPageIndex != widget.payload.initialPageIndex) {
       _chapterIndex = widget.payload.chapters.indexWhere(
         (chapter) => chapter.id == widget.payload.currentChapter.id,
@@ -153,7 +140,9 @@ class _ReaderSessionState extends ConsumerState<_ReaderSession>
     final theme = Theme.of(context);
     final currentChapter = widget.payload.chapters[_chapterIndex];
     final readerPreferences = ref.watch(readerPreferencesProvider);
-    final bookmarksAsync = ref.watch(bookBookmarksProvider(widget.payload.book.id));
+    final bookmarksAsync = ref.watch(
+      bookBookmarksProvider(widget.payload.book.id),
+    );
     final currentBookmark = _findCurrentBookmark(
       bookmarksAsync.valueOrNull ?? const <BookBookmark>[],
       currentChapter.id,
@@ -161,7 +150,8 @@ class _ReaderSessionState extends ConsumerState<_ReaderSession>
     );
     final readingTextStyle = theme.textTheme.bodyLarge!.copyWith(
       fontSize:
-          (theme.textTheme.bodyLarge!.fontSize ?? 18) * readerPreferences.fontScale,
+          (theme.textTheme.bodyLarge!.fontSize ?? 18) *
+          readerPreferences.fontScale,
       height: readerPreferences.lineHeight,
       color: widget.readerTheme.textColor,
     );
@@ -249,7 +239,8 @@ class _ReaderSessionState extends ConsumerState<_ReaderSession>
                                 child: ReaderPageContent(
                                   text: _pages.isEmpty ? '' : _pages[index],
                                   textStyle: readingTextStyle,
-                                  textAlign: readerPreferences.textAlignMode ==
+                                  textAlign:
+                                      readerPreferences.textAlignMode ==
                                           ReaderTextAlignMode.justify
                                       ? TextAlign.justify
                                       : TextAlign.left,
@@ -440,71 +431,86 @@ class _ReaderSessionState extends ConsumerState<_ReaderSession>
                   20,
                   24 + MediaQuery.viewInsetsOf(context).bottom,
                 ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: <Widget>[
-                    Row(
-                      children: <Widget>[
-                        Text(
-                          l10n.searchInBook,
-                          style: Theme.of(context).textTheme.titleLarge,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: AppSpacing.md),
-                    TextField(
-                      controller: controller,
-                      autofocus: true,
-                      textInputAction: TextInputAction.search,
-                      decoration: InputDecoration(
-                        hintText: l10n.searchPlaceholder,
-                        prefixIcon: const Icon(Icons.search_rounded),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final maxSheetHeight = math.min(
+                      constraints.maxHeight,
+                      MediaQuery.sizeOf(context).height * 0.72,
+                    );
+                    final resultHeight = math.max(
+                      120.0,
+                      math.min(420.0, maxSheetHeight - 170),
+                    );
+
+                    return SizedBox(
+                      height: maxSheetHeight,
+                      child: ListView(
+                        shrinkWrap: true,
+                        children: <Widget>[
+                          Row(
+                            children: <Widget>[
+                              Text(
+                                l10n.searchInBook,
+                                style: Theme.of(context).textTheme.titleLarge,
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: AppSpacing.md),
+                          TextField(
+                            controller: controller,
+                            autofocus: true,
+                            textInputAction: TextInputAction.search,
+                            decoration: InputDecoration(
+                              hintText: l10n.searchPlaceholder,
+                              prefixIcon: const Icon(Icons.search_rounded),
+                            ),
+                            onSubmitted: (_) => runSearch(),
+                          ),
+                          const SizedBox(height: AppSpacing.md),
+                          SizedBox(
+                            height: resultHeight,
+                            child: loading
+                                ? const Center(
+                                    child: CircularProgressIndicator(),
+                                  )
+                                : controller.text.trim().isEmpty
+                                ? Center(child: Text(l10n.searchEmpty))
+                                : results.isEmpty
+                                ? Center(child: Text(l10n.searchNoResult))
+                                : ListView.separated(
+                                    itemCount: results.length,
+                                    separatorBuilder: (context, index) =>
+                                        const Divider(height: 1),
+                                    itemBuilder: (context, index) {
+                                      final result = results[index];
+                                      return ListTile(
+                                        title: Text(result.chapterTitle),
+                                        subtitle: Text(
+                                          '第${result.pageIndex + 1}页 · ${result.excerpt}',
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        onTap: () async {
+                                          Navigator.of(context).pop();
+                                          await _jumpToSearchResult(result);
+                                        },
+                                      );
+                                    },
+                                  ),
+                          ),
+                          const SizedBox(height: AppSpacing.md),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: FilledButton.icon(
+                              onPressed: runSearch,
+                              icon: const Icon(Icons.search_rounded),
+                              label: Text(l10n.searchInBook),
+                            ),
+                          ),
+                        ],
                       ),
-                      onSubmitted: (_) => runSearch(),
-                    ),
-                    const SizedBox(height: AppSpacing.md),
-                    SizedBox(
-                      height: math.min(
-                        MediaQuery.sizeOf(context).height * 0.56,
-                        420,
-                      ),
-                      child: loading
-                          ? const Center(child: CircularProgressIndicator())
-                          : controller.text.trim().isEmpty
-                              ? Center(child: Text(l10n.searchEmpty))
-                              : results.isEmpty
-                                  ? Center(child: Text(l10n.searchNoResult))
-                                  : ListView.separated(
-                                      itemCount: results.length,
-                                      separatorBuilder: (context, index) =>
-                                          const Divider(height: 1),
-                                      itemBuilder: (context, index) {
-                                        final result = results[index];
-                                        return ListTile(
-                                          title: Text(result.chapterTitle),
-                                          subtitle: Text(
-                                            '第${result.pageIndex + 1}页 · ${result.excerpt}',
-                                            maxLines: 2,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                          onTap: () async {
-                                            Navigator.of(context).pop();
-                                            await _jumpToSearchResult(result);
-                                          },
-                                        );
-                                      },
-                                    ),
-                    ),
-                    const SizedBox(height: AppSpacing.md),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: FilledButton.icon(
-                        onPressed: runSearch,
-                        icon: const Icon(Icons.search_rounded),
-                        label: Text(l10n.searchInBook),
-                      ),
-                    ),
-                  ],
+                    );
+                  },
                 ),
               ),
             );
@@ -548,7 +554,9 @@ class _ReaderSessionState extends ConsumerState<_ReaderSession>
     ReaderThemePreset? themePreset,
     ReaderTextAlignMode? textAlignMode,
   }) {
-    ref.read(readerPreferencesProvider.notifier).update(
+    ref
+        .read(readerPreferencesProvider.notifier)
+        .update(
           fontScale: fontScale,
           lineHeight: lineHeight,
           pagePadding: pagePadding,
@@ -625,11 +633,14 @@ class _ReaderSessionState extends ConsumerState<_ReaderSession>
   }) {
     final fontSize = textStyle.fontSize ?? 18;
     final lineHeight = (textStyle.height ?? 1.85) * fontSize;
-    final charsPerLine =
-        math.max(12, (contentWidth / (fontSize * 0.82)).floor());
+    final charsPerLine = math.max(
+      12,
+      (contentWidth / (fontSize * 0.82)).floor(),
+    );
     final linesPerPage = math.max(8, (contentHeight / lineHeight).floor());
     final charsPerPage = charsPerLine * linesPerPage;
-    final extraUnitsPerParagraph = paragraphIndent.round() +
+    final extraUnitsPerParagraph =
+        paragraphIndent.round() +
         math.max(1, (paragraphSpacing * charsPerLine / 3).round());
 
     final pages = <String>[];
@@ -864,8 +875,9 @@ class _ReaderSessionState extends ConsumerState<_ReaderSession>
       builder: (context) {
         return Consumer(
           builder: (context, ref, child) {
-            final bookmarksAsync =
-                ref.watch(bookBookmarksProvider(widget.payload.book.id));
+            final bookmarksAsync = ref.watch(
+              bookBookmarksProvider(widget.payload.book.id),
+            );
 
             return SafeArea(
               child: Column(
@@ -875,10 +887,7 @@ class _ReaderSessionState extends ConsumerState<_ReaderSession>
                     padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
                     child: Row(
                       children: <Widget>[
-                        Text(
-                          l10n.bookmarks,
-                          style: theme.textTheme.titleLarge,
-                        ),
+                        Text(l10n.bookmarks, style: theme.textTheme.titleLarge),
                         const Spacer(),
                         FilledButton.tonalIcon(
                           onPressed: () async {
@@ -925,7 +934,9 @@ class _ReaderSessionState extends ConsumerState<_ReaderSession>
                                     bookmark.id,
                                   );
                                   ref.invalidate(
-                                    bookBookmarksProvider(widget.payload.book.id),
+                                    bookBookmarksProvider(
+                                      widget.payload.book.id,
+                                    ),
                                   );
                                 },
                                 icon: const Icon(Icons.delete_outline_rounded),
@@ -1052,64 +1063,143 @@ class _ReaderHeader extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(18, 12, 18, 10),
-      child: Row(
-        children: <Widget>[
-          FilledButton.tonalIcon(
-            onPressed: onBack,
-            icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
-            label: Text(l10n.backToLibrary),
-          ),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: Column(
-              children: <Widget>[
-                Text(
-                  chapterTitle,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: textColor.withValues(alpha: 0.72),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final compact = constraints.maxWidth < 560;
+
+          return Row(
+            children: <Widget>[
+              compact
+                  ? IconButton.filledTonal(
+                      onPressed: onBack,
+                      icon: const Icon(Icons.arrow_back_ios_new_rounded),
+                    )
+                  : FilledButton.tonalIcon(
+                      onPressed: onBack,
+                      icon: const Icon(
+                        Icons.arrow_back_ios_new_rounded,
+                        size: 18,
+                      ),
+                      label: Text(l10n.backToLibrary),
+                    ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  children: <Widget>[
+                    Text(
+                      chapterTitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: textColor.withValues(alpha: 0.72),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      book.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        color: textColor,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              if (compact) ...<Widget>[
+                IconButton.filledTonal(
+                  onPressed: onSearch,
+                  icon: const Icon(Icons.search_rounded),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                PopupMenuButton<_ReaderHeaderAction>(
+                  onSelected: (action) {
+                    switch (action) {
+                      case _ReaderHeaderAction.bookmarks:
+                        onBookmarks();
+                      case _ReaderHeaderAction.contents:
+                        onContents();
+                      case _ReaderHeaderAction.settings:
+                        onSettings();
+                    }
+                  },
+                  itemBuilder: (context) =>
+                      <PopupMenuEntry<_ReaderHeaderAction>>[
+                        PopupMenuItem<_ReaderHeaderAction>(
+                          value: _ReaderHeaderAction.bookmarks,
+                          child: Row(
+                            children: <Widget>[
+                              Icon(
+                                hasBookmark
+                                    ? Icons.bookmark_rounded
+                                    : Icons.bookmark_border_rounded,
+                              ),
+                              const SizedBox(width: 12),
+                              Text(l10n.bookmarks),
+                            ],
+                          ),
+                        ),
+                        PopupMenuItem<_ReaderHeaderAction>(
+                          value: _ReaderHeaderAction.contents,
+                          child: Row(
+                            children: <Widget>[
+                              const Icon(Icons.format_list_bulleted_rounded),
+                              const SizedBox(width: 12),
+                              Text(l10n.tableOfContents),
+                            ],
+                          ),
+                        ),
+                        PopupMenuItem<_ReaderHeaderAction>(
+                          value: _ReaderHeaderAction.settings,
+                          child: Row(
+                            children: <Widget>[
+                              const Icon(Icons.tune_rounded),
+                              const SizedBox(width: 12),
+                              Text(l10n.readerAppearance),
+                            ],
+                          ),
+                        ),
+                      ],
+                  child: const Padding(
+                    padding: EdgeInsets.all(2),
+                    child: Icon(Icons.more_horiz_rounded),
                   ),
                 ),
-                const SizedBox(height: 6),
-                Text(
-                  book.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    color: textColor,
+              ] else ...<Widget>[
+                IconButton.filledTonal(
+                  onPressed: onSearch,
+                  icon: const Icon(Icons.search_rounded),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                IconButton.filledTonal(
+                  onPressed: onBookmarks,
+                  icon: Icon(
+                    hasBookmark
+                        ? Icons.bookmark_rounded
+                        : Icons.bookmark_border_rounded,
                   ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                IconButton.filledTonal(
+                  onPressed: onContents,
+                  icon: const Icon(Icons.format_list_bulleted_rounded),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                IconButton.filledTonal(
+                  onPressed: onSettings,
+                  icon: const Icon(Icons.tune_rounded),
                 ),
               ],
-            ),
-          ),
-          const SizedBox(width: AppSpacing.md),
-          IconButton.filledTonal(
-            onPressed: onSearch,
-            icon: const Icon(Icons.search_rounded),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          IconButton.filledTonal(
-            onPressed: onBookmarks,
-            icon: Icon(
-              hasBookmark ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
-            ),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          IconButton.filledTonal(
-            onPressed: onContents,
-            icon: const Icon(Icons.format_list_bulleted_rounded),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          IconButton.filledTonal(
-            onPressed: onSettings,
-            icon: const Icon(Icons.tune_rounded),
-          ),
-        ],
+            ],
+          );
+        },
       ),
     );
   }
 }
+
+enum _ReaderHeaderAction { bookmarks, contents, settings }
 
 class _ReaderAppearanceSheet extends StatelessWidget {
   const _ReaderAppearanceSheet({
@@ -1145,10 +1235,7 @@ class _ReaderAppearanceSheet extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            Text(
-              l10n.readerAppearance,
-              style: theme.textTheme.titleLarge,
-            ),
+            Text(l10n.readerAppearance, style: theme.textTheme.titleLarge),
             const SizedBox(height: AppSpacing.lg),
             Text(l10n.readerThemePreset, style: theme.textTheme.labelLarge),
             const SizedBox(height: AppSpacing.sm),
@@ -1340,12 +1427,7 @@ class _ReaderSliderRow extends StatelessWidget {
             Text(valueText, style: theme.textTheme.bodySmall),
           ],
         ),
-        Slider(
-          min: min,
-          max: max,
-          value: value,
-          onChanged: onChanged,
-        ),
+        Slider(min: min, max: max, value: value, onChanged: onChanged),
         const SizedBox(height: AppSpacing.sm),
       ],
     );
@@ -1382,7 +1464,9 @@ class _ReaderThemeChip extends StatelessWidget {
                 : Colors.transparent,
             borderRadius: BorderRadius.circular(AppRadius.pill),
             border: Border.all(
-              color: selected ? colorScheme.primary : colorScheme.outlineVariant,
+              color: selected
+                  ? colorScheme.primary
+                  : colorScheme.outlineVariant,
             ),
           ),
           child: Row(
@@ -1522,10 +1606,12 @@ class _ReaderTapZones extends StatelessWidget {
             Positioned(
               left: width * 0.43,
               right: width * 0.43,
-              top: topInset + math.max(84, (height - topInset - bottomInset) * 0.3),
+              top:
+                  topInset +
+                  math.max(84, (height - topInset - bottomInset) * 0.3),
               bottom:
                   bottomInset +
-                      math.max(84, (height - topInset - bottomInset) * 0.3),
+                  math.max(84, (height - topInset - bottomInset) * 0.3),
               child: _TapZone(onTap: onCenter),
             ),
           ],
@@ -1536,9 +1622,7 @@ class _ReaderTapZones extends StatelessWidget {
 }
 
 class _TapZone extends StatelessWidget {
-  const _TapZone({
-    required this.onTap,
-  });
+  const _TapZone({required this.onTap});
 
   final VoidCallback onTap;
 
@@ -1570,23 +1654,23 @@ class ReaderSurfaceTheme {
   factory ReaderSurfaceTheme.fromPreset(ReaderThemePreset preset) {
     return switch (preset) {
       ReaderThemePreset.paper => const ReaderSurfaceTheme(
-          backgroundTop: AppColors.paperSoft,
-          backgroundBottom: AppColors.paper,
-          cardColor: Colors.white,
-          textColor: AppColors.ink,
-        ),
+        backgroundTop: AppColors.paperSoft,
+        backgroundBottom: AppColors.paper,
+        cardColor: Colors.white,
+        textColor: AppColors.ink,
+      ),
       ReaderThemePreset.mist => const ReaderSurfaceTheme(
-          backgroundTop: Color(0xFFE7EEF3),
-          backgroundBottom: Color(0xFFD9E4EB),
-          cardColor: Color(0xFFF4F7F8),
-          textColor: Color(0xFF1E2830),
-        ),
+        backgroundTop: Color(0xFFE7EEF3),
+        backgroundBottom: Color(0xFFD9E4EB),
+        cardColor: Color(0xFFF4F7F8),
+        textColor: Color(0xFF1E2830),
+      ),
       ReaderThemePreset.night => const ReaderSurfaceTheme(
-          backgroundTop: Color(0xFF141820),
-          backgroundBottom: Color(0xFF0D1017),
-          cardColor: AppColors.nightCard,
-          textColor: AppColors.nightInk,
-        ),
+        backgroundTop: Color(0xFF141820),
+        backgroundBottom: Color(0xFF0D1017),
+        cardColor: AppColors.nightCard,
+        textColor: AppColors.nightInk,
+      ),
     };
   }
 

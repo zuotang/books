@@ -10,6 +10,11 @@ Future<void> importBundledSampleIfExists(AppDatabase database) async {
     return;
   }
 
+  final importedBooks = await database.fetchImportedBooks();
+  if (importedBooks.any((book) => book.id == '0403-绿野仙踪-清-李百川')) {
+    return;
+  }
+
   final importer = TxtImporter();
   await importer.importIntoDatabase(
     path: samplePath,

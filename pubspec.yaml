@@ -38,5 +38,5 @@ hooks:
     sqlite3:
       source: system
       name_windows: winsqlite3
-      name_android: sqlite
+      name_android: sqlite3
       name: sqlite3

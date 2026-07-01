@@ -23,22 +23,19 @@ class SettingsPage extends StatelessWidget {
           children: <Widget>[
             Padding(
               padding: const EdgeInsets.fromLTRB(18, 12, 18, 0),
-              child: Row(
-                children: <Widget>[
-                  FilledButton.tonalIcon(
-                    onPressed: context.pop,
-                    icon: const Icon(
-                      Icons.arrow_back_ios_new_rounded,
-                      size: 18,
-                    ),
-                    label: Text(l10n.backToLibrary),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: FilledButton.tonalIcon(
+                  onPressed: context.pop,
+                  icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
+                  label: Text(
+                    l10n.backToLibrary,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                ],
+                ),
               ),
             ),
-            const Expanded(
-              child: SettingsBody(),
-            ),
+            const Expanded(child: SettingsBody()),
           ],
         ),
       ),
@@ -51,17 +48,12 @@ class SettingsSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const SafeArea(
-      child: SettingsBody(compact: true),
-    );
+    return const SafeArea(child: SettingsBody(compact: true));
   }
 }
 
 class SettingsBody extends ConsumerWidget {
-  const SettingsBody({
-    super.key,
-    this.compact = false,
-  });
+  const SettingsBody({super.key, this.compact = false});
 
   final bool compact;
 
@@ -94,34 +86,40 @@ class SettingsBody extends ConsumerWidget {
         _SettingsCard(
           title: l10n.theme,
           subtitle: l10n.appearanceHint,
-          child: SegmentedButton<AppThemeMode>(
-            segments: AppThemeMode.values.map((mode) {
-              return ButtonSegment<AppThemeMode>(
-                value: mode,
-                label: Text(_themeLabel(l10n, mode)),
-              );
-            }).toList(),
-            selected: <AppThemeMode>{themeMode},
-            onSelectionChanged: (selection) {
-              themeController.update(selection.first);
-            },
+          child: _ScrollableSegmentedButton<AppThemeMode>(
+            child: SegmentedButton<AppThemeMode>(
+              segments: AppThemeMode.values.map((mode) {
+                return ButtonSegment<AppThemeMode>(
+                  value: mode,
+                  label: Text(_themeLabel(l10n, mode)),
+                );
+              }).toList(),
+              selected: <AppThemeMode>{themeMode},
+              showSelectedIcon: false,
+              onSelectionChanged: (selection) {
+                themeController.update(selection.first);
+              },
+            ),
           ),
         ),
         const SizedBox(height: AppSpacing.md),
         _SettingsCard(
           title: l10n.language,
           subtitle: l10n.languageHint,
-          child: SegmentedButton<AppLocaleMode>(
-            segments: AppLocaleMode.values.map((mode) {
-              return ButtonSegment<AppLocaleMode>(
-                value: mode,
-                label: Text(_localeLabel(l10n, mode)),
-              );
-            }).toList(),
-            selected: <AppLocaleMode>{localeMode},
-            onSelectionChanged: (selection) {
-              localeController.update(selection.first);
-            },
+          child: _ScrollableSegmentedButton<AppLocaleMode>(
+            child: SegmentedButton<AppLocaleMode>(
+              segments: AppLocaleMode.values.map((mode) {
+                return ButtonSegment<AppLocaleMode>(
+                  value: mode,
+                  label: Text(_localeLabel(l10n, mode)),
+                );
+              }).toList(),
+              selected: <AppLocaleMode>{localeMode},
+              showSelectedIcon: false,
+              onSelectionChanged: (selection) {
+                localeController.update(selection.first);
+              },
+            ),
           ),
         ),
         const SizedBox(height: AppSpacing.md),
@@ -211,20 +209,28 @@ class _SettingsCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            Text(
-              title,
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
+            Text(title, style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 4),
-            Text(
-              subtitle,
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
+            Text(subtitle, style: Theme.of(context).textTheme.bodySmall),
             const SizedBox(height: 8),
             child,
           ],
         ),
       ),
+    );
+  }
+}
+
+class _ScrollableSegmentedButton<T> extends StatelessWidget {
+  const _ScrollableSegmentedButton({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: child,
     );
   }
 }

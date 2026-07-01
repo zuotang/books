@@ -8,10 +8,7 @@ import '../../data/book_repository.dart';
 import '../widgets/book_spine.dart';
 
 class CollectionPage extends ConsumerWidget {
-  const CollectionPage({
-    super.key,
-    required this.categoryId,
-  });
+  const CollectionPage({super.key, required this.categoryId});
 
   final String categoryId;
 
@@ -26,9 +23,7 @@ class CollectionPage extends ConsumerWidget {
         child: categoryAsync.when(
           data: (category) {
             if (category == null) {
-              return Center(
-                child: Text(l10n.collectionNotFound),
-              );
+              return Center(child: Text(l10n.collectionNotFound));
             }
 
             return CustomScrollView(
@@ -36,30 +31,42 @@ class CollectionPage extends ConsumerWidget {
                 SliverPadding(
                   padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
                   sliver: SliverToBoxAdapter(
-                    child: Row(
-                      children: <Widget>[
-                        IconButton.filledTonal(
-                          onPressed: context.pop,
-                          icon: const Icon(Icons.close_rounded),
-                        ),
-                        const SizedBox(width: AppSpacing.md),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: <Widget>[
-                              Text(
-                                category.title,
-                                style: theme.textTheme.headlineLarge,
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final compact = constraints.maxWidth < 420;
+
+                        return Row(
+                          children: <Widget>[
+                            IconButton.filledTonal(
+                              onPressed: context.pop,
+                              icon: const Icon(Icons.close_rounded),
+                            ),
+                            const SizedBox(width: AppSpacing.md),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: <Widget>[
+                                  Text(
+                                    category.title,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: compact
+                                        ? theme.textTheme.headlineMedium
+                                        : theme.textTheme.headlineLarge,
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    l10n.bookCount(category.books.length),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: theme.textTheme.bodySmall,
+                                  ),
+                                ],
                               ),
-                              const SizedBox(height: 4),
-                              Text(
-                                l10n.bookCount(category.books.length),
-                                style: theme.textTheme.bodySmall,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
+                            ),
+                          ],
+                        );
+                      },
                     ),
                   ),
                 ),
@@ -68,48 +75,59 @@ class CollectionPage extends ConsumerWidget {
                   sliver: SliverGrid(
                     gridDelegate:
                         const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 3,
-                      mainAxisSpacing: 24,
-                      crossAxisSpacing: 16,
-                      childAspectRatio: 0.56,
-                    ),
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) {
-                        final book = category.books[index];
+                          crossAxisCount: 3,
+                          mainAxisSpacing: 24,
+                          crossAxisSpacing: 16,
+                          childAspectRatio: 0.56,
+                        ),
+                    delegate: SliverChildBuilderDelegate((context, index) {
+                      final book = category.books[index];
 
-                        return GestureDetector(
-                          onTap: () => context.go('/reader/${book.id}'),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: <Widget>[
-                              Center(
-                                child: BookSpine(
-                                  book: book,
-                                  width: 96,
-                                  height: 154,
-                                  onTap: () => context.go('/reader/${book.id}'),
+                      return GestureDetector(
+                        onTap: () => context.go('/reader/${book.id}'),
+                        child: LayoutBuilder(
+                          builder: (context, constraints) {
+                            final coverHeight = (constraints.maxHeight - 58)
+                                .clamp(96.0, 154.0);
+                            final coverWidth = (coverHeight * (96 / 154)).clamp(
+                              60.0,
+                              96.0,
+                            );
+
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: <Widget>[
+                                Expanded(
+                                  child: Center(
+                                    child: BookSpine(
+                                      book: book,
+                                      width: coverWidth,
+                                      height: coverHeight,
+                                      onTap: () =>
+                                          context.go('/reader/${book.id}'),
+                                    ),
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(height: 10),
-                              Text(
-                                book.title,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: theme.textTheme.labelLarge,
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                book.author,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: theme.textTheme.bodySmall,
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                      childCount: category.books.length,
-                    ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  book.title,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: theme.textTheme.labelLarge,
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  book.author,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: theme.textTheme.bodySmall,
+                                ),
+                              ],
+                            );
+                          },
+                        ),
+                      );
+                    }, childCount: category.books.length),
                   ),
                 ),
               ],
