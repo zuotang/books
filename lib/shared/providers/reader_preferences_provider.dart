@@ -57,7 +57,7 @@ final initialReaderPreferencesProvider = Provider<ReaderPreferences>((ref) {
   return const ReaderPreferences(
     fontScale: 1,
     lineHeight: 1.85,
-    pagePadding: 24,
+    pagePadding: 8,
     paragraphSpacing: 1,
     paragraphIndent: 2,
     themePreset: ReaderThemePreset.paper,

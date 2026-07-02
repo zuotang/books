@@ -1,16 +1,16 @@
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:archive/archive.dart';
 import 'package:path/path.dart' as path;
 import 'package:xml/xml.dart';
 
 import '../../../../data/local/db/app_database.dart';
+import 'book_import_source.dart';
 import 'txt_importer.dart';
 
 class EpubImporter {
-  Future<ImportedBookDraft> parseFile(String filePath) async {
-    final bytes = await File(filePath).readAsBytes();
+  Future<ImportedBookDraft> parseSource(BookImportSource source) async {
+    final bytes = await source.readBytes();
     final archive = ZipDecoder().decodeBytes(bytes);
     final containerXml = _readArchiveText(archive, 'META-INF/container.xml');
     final containerDoc = XmlDocument.parse(containerXml);
@@ -32,7 +32,7 @@ class EpubImporter {
           metadataNode,
           <String>['dc:title', 'title'],
         ) ??
-        path.basenameWithoutExtension(filePath);
+        path.basenameWithoutExtension(source.name);
     final author =
         _firstText(metadataNode, <String>['dc:creator', 'creator']) ?? 'Unknown';
 
@@ -45,7 +45,7 @@ class EpubImporter {
       }
     }
 
-    final bookId = _buildBookId(filePath);
+    final bookId = _buildBookId(source.name);
     final chapters = <ImportedChapterDraft>[];
     var orderIndex = 0;
 
@@ -100,10 +100,10 @@ class EpubImporter {
   }
 
   Future<void> importIntoDatabase({
-    required String path,
+    required BookImportSource source,
     required AppDatabase database,
   }) async {
-    final draft = await parseFile(path);
+    final draft = await parseSource(source);
     await database.upsertImportedBook(draft);
   }
 
@@ -150,8 +150,8 @@ class EpubImporter {
     return raw.replaceAll(RegExp(r'\s+'), ' ').trim();
   }
 
-  String _buildBookId(String filePath) {
-    final plainName = path.basenameWithoutExtension(filePath);
+  String _buildBookId(String fileName) {
+    final plainName = path.basenameWithoutExtension(fileName);
     return plainName
         .toLowerCase()
         .replaceAll(RegExp(r'[^a-z0-9\u4e00-\u9fa5]+'), '-')

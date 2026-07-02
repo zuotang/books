@@ -67,7 +67,7 @@ class PreferencesService {
     return ReaderPreferences(
       fontScale: _preferences.getDouble(_readerFontScaleKey) ?? 1,
       lineHeight: _preferences.getDouble(_readerLineHeightKey) ?? 1.85,
-      pagePadding: _preferences.getDouble(_readerPagePaddingKey) ?? 24,
+      pagePadding: _preferences.getDouble(_readerPagePaddingKey) ?? 8,
       paragraphSpacing: _preferences.getDouble(_readerParagraphSpacingKey) ?? 1,
       paragraphIndent: _preferences.getDouble(_readerParagraphIndentKey) ?? 2,
       themePreset: ReaderThemePreset.values.firstWhere(

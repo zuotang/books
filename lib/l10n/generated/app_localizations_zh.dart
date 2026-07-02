@@ -147,6 +147,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get importBooksAction => '开始导入';
 
   @override
+  String get importFilesAction => '文件导入';
+
+  @override
+  String get importDirectoryAction => '目录导入';
+
+  @override
   String get importPathLabel => '文件路径';
 
   @override

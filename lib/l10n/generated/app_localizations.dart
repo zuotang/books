@@ -374,6 +374,18 @@ abstract class AppLocalizations {
   /// **'Import'**
   String get importBooksAction;
 
+  /// No description provided for @importFilesAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Import Files'**
+  String get importFilesAction;
+
+  /// No description provided for @importDirectoryAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Import Directory'**
+  String get importDirectoryAction;
+
   /// No description provided for @importPathLabel.
   ///
   /// In en, this message translates to:

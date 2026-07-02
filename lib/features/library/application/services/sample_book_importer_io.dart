@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import '../../../../data/local/db/app_database.dart';
+import 'book_import_source.dart';
 import 'txt_importer.dart';
 
 Future<void> importBundledSampleIfExists(AppDatabase database) async {
@@ -17,7 +18,10 @@ Future<void> importBundledSampleIfExists(AppDatabase database) async {
 
   final importer = TxtImporter();
   await importer.importIntoDatabase(
-    path: samplePath,
+    source: const BookImportSource(
+      name: samplePath,
+      path: samplePath,
+    ),
     database: database,
   );
 }

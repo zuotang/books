@@ -1,7 +1,9 @@
 import 'dart:convert';
-import 'dart:io';
+
+import 'package:charset/charset.dart';
 
 import '../../../../data/local/db/app_database.dart';
+import 'book_import_source.dart';
 
 class ImportedBookDraft {
   const ImportedBookDraft({
@@ -46,13 +48,10 @@ class ImportedChapterDraft {
 }
 
 class TxtImporter {
-  Future<ImportedBookDraft> parseFile(String path) async {
-    final file = File(path);
-    final bytes = await file.readAsBytes();
+  Future<ImportedBookDraft> parseSource(BookImportSource source) async {
+    final bytes = await source.readBytes();
     final text = _decode(bytes);
-    final fileName = file.uri.pathSegments.isNotEmpty
-        ? file.uri.pathSegments.last
-        : path.split(Platform.pathSeparator).last;
+    final fileName = source.name;
 
     final lines = text
         .split(RegExp(r'\r?\n'))
@@ -91,19 +90,31 @@ class TxtImporter {
   }
 
   Future<void> importIntoDatabase({
-    required String path,
+    required BookImportSource source,
     required AppDatabase database,
   }) async {
-    final draft = await parseFile(path);
+    final draft = await parseSource(source);
     await database.upsertImportedBook(draft);
   }
 
   String _decode(List<int> bytes) {
+    if (_hasUtf16Bom(bytes)) {
+      return utf16.decode(bytes);
+    }
+
     try {
       return utf8.decode(bytes);
     } on FormatException {
-      return systemEncoding.decode(bytes);
+      return gbk.decode(bytes);
     }
+  }
+
+  bool _hasUtf16Bom(List<int> bytes) {
+    if (bytes.length < 2) {
+      return false;
+    }
+    return (bytes[0] == 0xFE && bytes[1] == 0xFF) ||
+        (bytes[0] == 0xFF && bytes[1] == 0xFE);
   }
 
   (String, String) _parseFileName(String fileName) {

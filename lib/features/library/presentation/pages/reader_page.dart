@@ -77,6 +77,7 @@ class _ReaderSessionState extends ConsumerState<_ReaderSession>
   Size? _lastViewportSize;
   ReaderPreferences? _lastPreferences;
   List<String> _pages = const <String>[];
+  List<int> _pageOffsets = const <int>[];
 
   @override
   void initState() {
@@ -112,6 +113,7 @@ class _ReaderSessionState extends ConsumerState<_ReaderSession>
       _lastViewportSize = null;
       _lastPreferences = null;
       _pages = const <String>[];
+      _pageOffsets = const <int>[];
       _pageController.jumpToPage(_pageIndex);
     }
   }
@@ -159,13 +161,6 @@ class _ReaderSessionState extends ConsumerState<_ReaderSession>
     return LayoutBuilder(
       builder: (context, constraints) {
         final viewportSize = Size(constraints.maxWidth, constraints.maxHeight);
-        _ensurePages(
-          viewportSize: viewportSize,
-          textStyle: readingTextStyle,
-          chapter: currentChapter,
-          preferences: readerPreferences,
-        );
-
         final currentPageCount = _pages.isEmpty ? 1 : _pages.length;
         final currentPage = math.min(_pageIndex + 1, currentPageCount);
 
@@ -197,7 +192,7 @@ class _ReaderSessionState extends ConsumerState<_ReaderSession>
                               context,
                               readerPreferences,
                               readingTextStyle,
-                              viewportSize,
+                              _lastViewportSize ?? viewportSize,
                             ),
                             onBookmarks: _openBookmarksSheet,
                             onContents: _openContentsSheet,
@@ -211,7 +206,7 @@ class _ReaderSessionState extends ConsumerState<_ReaderSession>
                   ),
                   Expanded(
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
+                      padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
                       child: DecoratedBox(
                         decoration: BoxDecoration(
                           color: widget.readerTheme.cardColor,
@@ -219,36 +214,49 @@ class _ReaderSessionState extends ConsumerState<_ReaderSession>
                         ),
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(AppRadius.lg),
-                          child: PageView.builder(
-                            controller: _pageController,
-                            itemCount: currentPageCount,
-                            onPageChanged: (index) {
-                              setState(() {
-                                _pageIndex = index;
-                              });
-                              unawaited(_persistProgress());
-                            },
-                            itemBuilder: (context, index) {
-                              return Padding(
-                                padding: EdgeInsets.fromLTRB(
-                                  readerPreferences.pagePadding,
-                                  24,
-                                  readerPreferences.pagePadding,
-                                  24,
-                                ),
-                                child: ReaderPageContent(
-                                  text: _pages.isEmpty ? '' : _pages[index],
-                                  textStyle: readingTextStyle,
-                                  textAlign:
-                                      readerPreferences.textAlignMode ==
-                                          ReaderTextAlignMode.justify
-                                      ? TextAlign.justify
-                                      : TextAlign.left,
-                                  paragraphSpacing:
-                                      readerPreferences.paragraphSpacing,
-                                  paragraphIndent:
-                                      readerPreferences.paragraphIndent,
-                                ),
+                          child: LayoutBuilder(
+                            builder: (context, pageConstraints) {
+                              final pageViewportSize = Size(
+                                pageConstraints.maxWidth,
+                                pageConstraints.maxHeight,
+                              );
+                              _ensurePages(
+                                viewportSize: pageViewportSize,
+                                textStyle: readingTextStyle,
+                                chapter: currentChapter,
+                                preferences: readerPreferences,
+                              );
+                              final pageCount =
+                                  _pages.isEmpty ? 1 : _pages.length;
+
+                              return PageView.builder(
+                                controller: _pageController,
+                                itemCount: pageCount,
+                                onPageChanged: (index) {
+                                  setState(() {
+                                    _pageIndex = index;
+                                  });
+                                  unawaited(_persistProgress());
+                                },
+                                itemBuilder: (context, index) {
+                                  return Padding(
+                                    padding: EdgeInsets.fromLTRB(
+                                      readerPreferences.pagePadding,
+                                      12,
+                                      readerPreferences.pagePadding,
+                                      12,
+                                    ),
+                                    child: ReaderPageContent(
+                                      text: _pages.isEmpty ? '' : _pages[index],
+                                      textStyle: readingTextStyle,
+                                      textAlign:
+                                          readerPreferences.textAlignMode ==
+                                              ReaderTextAlignMode.justify
+                                          ? TextAlign.justify
+                                          : TextAlign.left,
+                                    ),
+                                  );
+                                },
                               );
                             },
                           ),
@@ -334,26 +342,29 @@ class _ReaderSessionState extends ConsumerState<_ReaderSession>
 
     final contentWidth = math.max(
       180.0,
-      viewportSize.width - 84 - (preferences.pagePadding * 2),
+      viewportSize.width - (preferences.pagePadding * 2),
     );
     final contentHeight = math.max(
       220.0,
-      viewportSize.height - (_showChrome ? 220 : 96),
+      viewportSize.height - 24,
     );
 
     final results = <_ReaderSearchResult>[];
     for (final chapter in widget.payload.chapters) {
-      final pages = _paginateChapter(
+      final pagination = _paginateChapter(
         chapter: chapter,
         textStyle: textStyle,
         contentWidth: contentWidth,
         contentHeight: contentHeight,
+        textAlign: preferences.textAlignMode == ReaderTextAlignMode.justify
+            ? TextAlign.justify
+            : TextAlign.left,
         paragraphSpacing: preferences.paragraphSpacing,
         paragraphIndent: preferences.paragraphIndent,
       );
 
-      for (var pageIndex = 0; pageIndex < pages.length; pageIndex++) {
-        final page = pages[pageIndex];
+      for (var pageIndex = 0; pageIndex < pagination.pages.length; pageIndex++) {
+        final page = pagination.pages[pageIndex];
         final hitIndex = page.indexOf(normalizedKeyword);
         if (hitIndex < 0) {
           continue;
@@ -577,6 +588,10 @@ class _ReaderSessionState extends ConsumerState<_ReaderSession>
     required BookChapter chapter,
     required ReaderPreferences preferences,
   }) {
+    final shouldRestoreAnchor =
+        _lastViewportSize != null && _lastPreferences != null && _pages.isNotEmpty;
+    final anchorOffset = _currentPageAnchorOffset();
+
     if (_lastViewportSize == viewportSize &&
         _lastPreferences == preferences &&
         _pages.isNotEmpty) {
@@ -585,26 +600,38 @@ class _ReaderSessionState extends ConsumerState<_ReaderSession>
 
     final contentWidth = math.max(
       180.0,
-      viewportSize.width - 84 - (preferences.pagePadding * 2),
+      viewportSize.width - (preferences.pagePadding * 2),
     );
     final contentHeight = math.max(
       220.0,
-      viewportSize.height - (_showChrome ? 220 : 96),
+      viewportSize.height - 24,
     );
+    final previousPageCount = _pages.length;
 
-    _pages = _paginateChapter(
+    final pagination = _paginateChapter(
       chapter: chapter,
       textStyle: textStyle,
       contentWidth: contentWidth,
       contentHeight: contentHeight,
+      textAlign: preferences.textAlignMode == ReaderTextAlignMode.justify
+          ? TextAlign.justify
+          : TextAlign.left,
       paragraphSpacing: preferences.paragraphSpacing,
       paragraphIndent: preferences.paragraphIndent,
     );
+    _pages = pagination.pages;
+    _pageOffsets = pagination.offsets;
+    final didPageCountChange = _pages.length != previousPageCount;
     _lastViewportSize = viewportSize;
     _lastPreferences = preferences;
 
     if (_pages.isEmpty) {
       _pages = <String>[''];
+      _pageOffsets = <int>[0];
+    }
+
+    if (shouldRestoreAnchor) {
+      _pageIndex = _pageIndexForAnchor(anchorOffset);
     }
 
     if (_pageIndex >= _pages.length) {
@@ -616,6 +643,10 @@ class _ReaderSessionState extends ConsumerState<_ReaderSession>
         return;
       }
 
+      if (didPageCountChange) {
+        setState(() {});
+      }
+
       if (_pageController.hasClients &&
           _pageController.page?.round() != _pageIndex) {
         _pageController.jumpToPage(_pageIndex);
@@ -623,82 +654,168 @@ class _ReaderSessionState extends ConsumerState<_ReaderSession>
     });
   }
 
-  List<String> _paginateChapter({
+  _PaginatedChapter _paginateChapter({
     required BookChapter chapter,
     required TextStyle textStyle,
     required double contentWidth,
     required double contentHeight,
+    required TextAlign textAlign,
     required double paragraphSpacing,
     required double paragraphIndent,
   }) {
-    final fontSize = textStyle.fontSize ?? 18;
-    final lineHeight = (textStyle.height ?? 1.85) * fontSize;
-    final charsPerLine = math.max(
-      12,
-      (contentWidth / (fontSize * 0.82)).floor(),
+    final chapterText = _buildChapterText(
+      chapter: chapter,
+      paragraphSpacing: paragraphSpacing,
+      paragraphIndent: paragraphIndent,
     );
-    final linesPerPage = math.max(8, (contentHeight / lineHeight).floor());
-    final charsPerPage = charsPerLine * linesPerPage;
-    final extraUnitsPerParagraph =
-        paragraphIndent.round() +
-        math.max(1, (paragraphSpacing * charsPerLine / 3).round());
+    if (chapterText.isEmpty) {
+      return const _PaginatedChapter(
+        pages: <String>[''],
+        offsets: <int>[0],
+      );
+    }
 
     final pages = <String>[];
-    final buffer = StringBuffer();
-    var currentUnits = 0;
-
-    void pushPage() {
-      final text = buffer.toString().trim();
-      if (text.isNotEmpty) {
-        pages.add(text);
+    final offsets = <int>[];
+    var start = 0;
+    while (start < chapterText.length) {
+      final end = _findPageEnd(
+        text: chapterText,
+        start: start,
+        textStyle: textStyle,
+        textAlign: textAlign,
+        contentWidth: contentWidth,
+        contentHeight: contentHeight,
+      );
+      if (end <= start) {
+        break;
       }
-      buffer.clear();
-      currentUnits = 0;
+      offsets.add(start);
+      pages.add(chapterText.substring(start, end).trimRight());
+      start = _skipPageBoundary(chapterText, end);
     }
 
-    for (final paragraph in chapter.paragraphs) {
-      final normalized = paragraph.trim();
-      if (normalized.isEmpty) {
-        continue;
-      }
-
-      final units = normalized.length + extraUnitsPerParagraph;
-      if (currentUnits > 0 && currentUnits + units > charsPerPage) {
-        pushPage();
-      }
-
-      if (normalized.length > charsPerPage) {
-        final chunks = _splitLongParagraph(normalized, charsPerPage);
-        for (final chunk in chunks) {
-          if (currentUnits > 0) {
-            pushPage();
-          }
-          buffer.write(chunk);
-          buffer.write('\n\n');
-          currentUnits = chunk.length + extraUnitsPerParagraph.toInt();
-          pushPage();
-        }
-        continue;
-      }
-
-      buffer.write(normalized);
-      buffer.write('\n\n');
-      currentUnits += units.toInt();
+    if (pages.isEmpty) {
+      return const _PaginatedChapter(
+        pages: <String>[''],
+        offsets: <int>[0],
+      );
     }
 
-    pushPage();
-    return pages;
+    return _PaginatedChapter(pages: pages, offsets: offsets);
   }
 
-  List<String> _splitLongParagraph(String paragraph, int chunkSize) {
-    final chunks = <String>[];
-    var start = 0;
-    while (start < paragraph.length) {
-      final end = math.min(paragraph.length, start + chunkSize);
-      chunks.add(paragraph.substring(start, end));
-      start = end;
+  String _buildChapterText({
+    required BookChapter chapter,
+    required double paragraphSpacing,
+    required double paragraphIndent,
+  }) {
+    final paragraphs = chapter.paragraphs
+        .map((paragraph) => paragraph.trim())
+        .where((paragraph) => paragraph.isNotEmpty)
+        .toList();
+    if (paragraphs.isEmpty) {
+      return '';
     }
-    return chunks;
+
+    final indent = '　' * paragraphIndent.round();
+    final separator = '\n' * _paragraphBreakLines(paragraphSpacing);
+    return paragraphs.map((paragraph) => '$indent$paragraph').join(separator);
+  }
+
+  int _paragraphBreakLines(double paragraphSpacing) {
+    if (paragraphSpacing <= 0.75) {
+      return 1;
+    }
+    if (paragraphSpacing <= 1.35) {
+      return 2;
+    }
+    return 3;
+  }
+
+  int _findPageEnd({
+    required String text,
+    required int start,
+    required TextStyle textStyle,
+    required TextAlign textAlign,
+    required double contentWidth,
+    required double contentHeight,
+  }) {
+    var low = start + 1;
+    var high = text.length;
+    var best = start + 1;
+
+    while (low <= high) {
+      final mid = (low + high) ~/ 2;
+      final painter = TextPainter(
+        text: TextSpan(text: text.substring(start, mid), style: textStyle),
+        textAlign: textAlign,
+        textDirection: TextDirection.ltr,
+      )..layout(maxWidth: contentWidth);
+
+      if (painter.height <= contentHeight) {
+        best = mid;
+        low = mid + 1;
+      } else {
+        high = mid - 1;
+      }
+    }
+
+    return _snapPageEnd(text, start, best);
+  }
+
+  int _snapPageEnd(String text, int start, int proposedEnd) {
+    if (proposedEnd >= text.length) {
+      return text.length;
+    }
+
+    final scanStart = math.max(start + 1, proposedEnd - 24);
+    for (var index = proposedEnd; index >= scanStart; index -= 1) {
+      final char = text[index - 1];
+      if (char == '\n' ||
+          char == ' ' ||
+          char == '　' ||
+          char == '。' ||
+          char == '！' ||
+          char == '？' ||
+          char == '；' ||
+          char == '：' ||
+          char == '，' ||
+          char == '、') {
+        return index;
+      }
+    }
+
+    return proposedEnd;
+  }
+
+  int _skipPageBoundary(String text, int start) {
+    var next = start;
+    while (next < text.length && (text[next] == '\n' || text[next] == ' ')) {
+      next += 1;
+    }
+    return next;
+  }
+
+  int _currentPageAnchorOffset() {
+    if (_pageIndex < 0 || _pageIndex >= _pageOffsets.length) {
+      return 0;
+    }
+    return _pageOffsets[_pageIndex];
+  }
+
+  int _pageIndexForAnchor(int anchorOffset) {
+    if (_pageOffsets.isEmpty) {
+      return 0;
+    }
+
+    for (var index = _pageOffsets.length - 1; index >= 0; index -= 1) {
+      if (_pageOffsets[index] <= anchorOffset) {
+        return index;
+      }
+    }
+
+    return 0;
   }
 
   Future<void> _goPrevious() async {
@@ -1289,7 +1406,7 @@ class _ReaderAppearanceSheet extends StatelessWidget {
             _ReaderSliderRow(
               label: l10n.readerPagePadding,
               valueText: preferences.pagePadding.toStringAsFixed(0),
-              min: 16,
+              min: 8,
               max: 40,
               value: preferences.pagePadding,
               onChanged: onPagePaddingChanged,
@@ -1358,39 +1475,19 @@ class ReaderPageContent extends StatelessWidget {
     required this.text,
     required this.textStyle,
     required this.textAlign,
-    required this.paragraphSpacing,
-    required this.paragraphIndent,
   });
 
   final String text;
   final TextStyle textStyle;
   final TextAlign textAlign;
-  final double paragraphSpacing;
-  final double paragraphIndent;
 
   @override
   Widget build(BuildContext context) {
-    final paragraphs = text
-        .split('\n\n')
-        .where((value) => value.trim().isNotEmpty)
-        .toList();
-    final indent = '　' * paragraphIndent.round();
-    final gap = (textStyle.fontSize ?? 18) * paragraphSpacing;
-
-    return SingleChildScrollView(
-      physics: const NeverScrollableScrollPhysics(),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          for (var index = 0; index < paragraphs.length; index++) ...<Widget>[
-            Text(
-              '$indent${paragraphs[index].trim()}',
-              style: textStyle,
-              textAlign: textAlign,
-            ),
-            if (index < paragraphs.length - 1) SizedBox(height: gap),
-          ],
-        ],
+    return SizedBox.expand(
+      child: Text(
+        text,
+        style: textStyle,
+        textAlign: textAlign,
       ),
     );
   }
@@ -1692,4 +1789,14 @@ class _ReaderSearchResult {
   final String chapterTitle;
   final int pageIndex;
   final String excerpt;
+}
+
+class _PaginatedChapter {
+  const _PaginatedChapter({
+    required this.pages,
+    required this.offsets,
+  });
+
+  final List<String> pages;
+  final List<int> offsets;
 }

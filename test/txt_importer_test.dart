@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:archive/archive.dart';
+import 'package:book_app/features/library/application/services/book_import_source.dart';
 import 'package:book_app/features/library/application/services/epub_importer.dart';
 import 'package:book_app/features/library/application/services/txt_importer.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -9,7 +10,13 @@ void main() {
   test('GBK 古籍文本可解析为导入草稿', () async {
     final importer = TxtImporter();
 
-    final draft = await importer.parseFile('0403 绿野仙踪  清  李百川.Txt');
+    final bytes = await File('0403 绿野仙踪  清  李百川.Txt').readAsBytes();
+    final draft = await importer.parseSource(
+      BookImportSource(
+        name: '0403 绿野仙踪  清  李百川.Txt',
+        bytes: bytes,
+      ),
+    );
 
     expect(draft.title, '绿野仙踪');
     expect(draft.author, contains('李百川'));
@@ -93,7 +100,12 @@ void main() {
       );
 
     await epubFile.writeAsBytes(ZipEncoder().encode(archive));
-    final draft = await importer.parseFile(epubFile.path);
+    final draft = await importer.parseSource(
+      BookImportSource(
+        name: 'sample.epub',
+        bytes: await epubFile.readAsBytes(),
+      ),
+    );
 
     expect(draft.title, 'Sample EPUB');
     expect(draft.author, 'Tester');

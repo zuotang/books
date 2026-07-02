@@ -46,6 +46,8 @@
   "manageLibrary": "Manage Library",
   "importBooksHint": "Enter one local txt or epub file path per line to import multiple books.",
   "importBooksAction": "Import",
+  "importFilesAction": "Import Files",
+  "importDirectoryAction": "Import Directory",
   "importPathLabel": "File path",
   "importSuccess": "Import completed",
   "importFailed": "Import failed",

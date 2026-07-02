@@ -1,11 +1,14 @@
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../app/theme/app_radius.dart';
 import '../../../../app/theme/app_spacing.dart';
+import '../../../../core/logging/app_logger.dart';
 import '../../../../l10n/generated/app_localizations.dart';
 import '../../../../shared/providers/library_preferences_provider.dart';
+import '../../application/services/book_import_source.dart';
 import '../../data/book_repository.dart';
 import '../../domain/book_models.dart';
 
@@ -17,14 +20,8 @@ class LibraryManagePage extends ConsumerStatefulWidget {
 }
 
 class _LibraryManagePageState extends ConsumerState<LibraryManagePage> {
-  final TextEditingController _pathsController = TextEditingController();
   bool _importing = false;
-
-  @override
-  void dispose() {
-    _pathsController.dispose();
-    super.dispose();
-  }
+  final AppLogger _logger = AppLogger();
 
   @override
   Widget build(BuildContext context) {
@@ -96,31 +93,25 @@ class _LibraryManagePageState extends ConsumerState<LibraryManagePage> {
             _ManageCard(
               title: l10n.addBooks,
               subtitle: l10n.importBooksHint,
-              child: Column(
+              child: Wrap(
+                spacing: 12,
+                runSpacing: 12,
                 children: <Widget>[
-                  TextField(
-                    controller: _pathsController,
-                    minLines: 4,
-                    maxLines: 8,
-                    decoration: InputDecoration(
-                      labelText: l10n.importPathLabel,
-                      border: const OutlineInputBorder(),
-                    ),
+                  FilledButton.icon(
+                    onPressed: _importing ? null : _pickFilesAndImport,
+                    icon: _importing
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.upload_file_rounded),
+                    label: Text(l10n.importFilesAction),
                   ),
-                  const SizedBox(height: AppSpacing.md),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: FilledButton.icon(
-                      onPressed: _importing ? null : _handleImport,
-                      icon: _importing
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.upload_file_rounded),
-                      label: Text(l10n.importBooksAction),
-                    ),
+                  FilledButton.tonalIcon(
+                    onPressed: _importing ? null : _pickDirectoryAndImport,
+                    icon: const Icon(Icons.folder_open_rounded),
+                    label: Text(l10n.importDirectoryAction),
                   ),
                 ],
               ),
@@ -191,33 +182,83 @@ class _LibraryManagePageState extends ConsumerState<LibraryManagePage> {
     );
   }
 
-  Future<void> _handleImport() async {
-    final l10n = AppLocalizations.of(context)!;
-    final paths = _pathsController.text
-        .split(RegExp(r'\r?\n'))
-        .map((value) => value.trim())
-        .where((value) => value.isNotEmpty)
-        .toList();
+  Future<void> _pickFilesAndImport() async {
+    _logger.info('打开文件选择器');
+    final result = await FilePicker.platform.pickFiles(
+      allowMultiple: true,
+      withData: true,
+      type: FileType.custom,
+      allowedExtensions: const <String>['txt', 'epub'],
+    );
 
-    if (paths.isEmpty) {
+    final sources = result?.files
+            .where(
+              (file) =>
+                  file.name.trim().isNotEmpty &&
+                  (file.path != null || file.bytes != null),
+            )
+            .map(
+              (file) => BookImportSource(
+                name: file.name,
+                path: file.path,
+                bytes: file.bytes,
+              ),
+            )
+            .toList() ??
+        const <BookImportSource>[];
+
+    _logger.info('文件选择完成，数量=${result?.files.length ?? 0}');
+    for (final file in result?.files ?? const <PlatformFile>[]) {
+      _logger.info(
+        '选择结果: name=${file.name}, ext=${file.extension}, hasPath=${file.path != null}, hasBytes=${file.bytes != null}, bytesLength=${file.bytes?.length ?? 0}, size=${file.size}',
+      );
+    }
+
+    if (sources.isEmpty) {
+      _logger.info('没有可导入的有效文件');
       return;
     }
+
+    await _runImport(
+      () => ref.read(bookRepositoryProvider).importBooks(sources),
+    );
+  }
+
+  Future<void> _pickDirectoryAndImport() async {
+    _logger.info('打开目录选择器');
+    final directoryPath = await FilePicker.platform.getDirectoryPath();
+    _logger.info('目录选择结果: ${directoryPath ?? 'null'}');
+    if (directoryPath == null || directoryPath.trim().isEmpty) {
+      return;
+    }
+
+    await _runImport(
+      () => ref.read(bookRepositoryProvider).importBooksFromDirectory(
+            directoryPath,
+          ),
+    );
+  }
+
+  Future<void> _runImport(Future<void> Function() action) async {
+    final l10n = AppLocalizations.of(context)!;
 
     setState(() {
       _importing = true;
     });
 
     try {
-      await ref.read(bookRepositoryProvider).importBooksByPaths(paths);
+      _logger.info('开始执行导入动作');
+      await action();
+      _logger.info('导入动作执行成功');
       ref.invalidate(importedBooksProvider);
       ref.invalidate(libraryCategoriesProvider);
       if (mounted) {
-        _pathsController.clear();
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text(l10n.importSuccess)));
       }
-    } catch (error) {
+    } catch (error, stackTrace) {
+      _logger.error('导入失败', error, stackTrace);
       if (mounted) {
         ScaffoldMessenger.of(
           context,

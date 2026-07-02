@@ -150,6 +150,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get importBooksAction => 'Import';
 
   @override
+  String get importFilesAction => 'Import Files';
+
+  @override
+  String get importDirectoryAction => 'Import Directory';
+
+  @override
   String get importPathLabel => 'File path';
 
   @override

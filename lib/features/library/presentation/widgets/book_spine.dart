@@ -125,7 +125,7 @@ class BookSpine extends StatelessWidget {
                           if (showTitle) ...<Widget>[
                             Text(
                               book.title,
-                              maxLines: 3,
+                              maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                               style: theme.textTheme.labelLarge?.copyWith(
                                 color: Colors.white,

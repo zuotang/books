@@ -46,6 +46,8 @@
   "manageLibrary": "图书管理",
   "importBooksHint": "每行输入一个本地 txt 或 epub 文件路径，可一次导入多本。",
   "importBooksAction": "开始导入",
+  "importFilesAction": "文件导入",
+  "importDirectoryAction": "目录导入",
   "importPathLabel": "文件路径",
   "importSuccess": "导入完成",
   "importFailed": "导入失败",

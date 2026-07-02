@@ -1,7 +1,11 @@
+import 'dart:io';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/logging/app_logger.dart';
 import '../../../data/local/db/app_database.dart';
 import '../../../data/local/db/app_database_provider.dart';
+import '../application/services/book_import_source.dart';
 import '../application/services/epub_importer.dart';
 import '../application/services/txt_importer.dart';
 import '../domain/book_models.dart';
@@ -53,9 +57,10 @@ final readerPayloadProvider =
 );
 
 class BookRepository {
-  const BookRepository(this._database);
+  BookRepository(this._database);
 
   final AppDatabase _database;
+  final AppLogger _logger = AppLogger();
   static final _epubImporter = EpubImporter();
   static final _txtImporter = TxtImporter();
 
@@ -132,23 +137,73 @@ class BookRepository {
   }
 
   Future<void> importBooksByPaths(List<String> paths) async {
-    for (final path in paths) {
-      final normalized = path.trim();
-      if (normalized.isEmpty) {
+    final sources = paths
+        .map(
+          (path) => BookImportSource(
+            name: path.split(Platform.pathSeparator).last,
+            path: path,
+          ),
+        )
+        .toList();
+    await importBooks(sources);
+  }
+
+  Future<void> importBooks(List<BookImportSource> sources) async {
+    _logger.info('开始导入书籍，数量=${sources.length}');
+
+    for (final source in sources) {
+      final normalizedName = source.name.trim();
+      if (normalizedName.isEmpty) {
+        _logger.info('跳过空文件名导入项');
         continue;
       }
-      if (normalized.toLowerCase().endsWith('.epub')) {
+
+      _logger.info(
+        '导入项: name=${source.name}, ext=${source.extension}, hasPath=${source.path != null}, hasBytes=${source.bytes != null}, bytesLength=${source.bytes?.length ?? 0}',
+      );
+
+      if (source.extension == '.epub') {
         await _epubImporter.importIntoDatabase(
-          path: normalized,
+          source: source,
           database: _database,
         );
-      } else {
-        await _txtImporter.importIntoDatabase(
-          path: normalized,
-          database: _database,
-        );
+        continue;
       }
+
+      if (source.extension == '.txt') {
+        await _txtImporter.importIntoDatabase(
+          source: source,
+          database: _database,
+        );
+        continue;
+      }
+
+      throw UnsupportedError('不支持的文件类型: ${source.name}');
     }
+  }
+
+  Future<void> importBooksFromDirectory(String directoryPath) async {
+    final directory = Directory(directoryPath);
+    if (!await directory.exists()) {
+      throw FileSystemException('目录不存在', directoryPath);
+    }
+
+    final paths = await directory
+        .list(recursive: true, followLinks: false)
+        .where((entity) => entity is File)
+        .map((entity) => entity.path)
+        .where(
+          (path) =>
+              path.toLowerCase().endsWith('.txt') ||
+              path.toLowerCase().endsWith('.epub'),
+        )
+        .toList();
+
+    if (paths.isEmpty) {
+      throw StateError('目录内没有可导入的 txt 或 epub 文件');
+    }
+
+    await importBooksByPaths(paths);
   }
 
   Future<void> updateBookMetadata({
